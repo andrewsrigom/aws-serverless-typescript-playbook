@@ -1,0 +1,6 @@
+pnpm-lock.yaml
+dist
+**/.terraform
+**/.terraform.lock.hcl
+*.tf
+**/*.tf

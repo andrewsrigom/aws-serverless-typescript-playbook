@@ -1,0 +1,6 @@
+{
+  "id": "event-1",
+  "type": "resource.changed",
+  "resourceId": "r1",
+  "revision": 1
+}

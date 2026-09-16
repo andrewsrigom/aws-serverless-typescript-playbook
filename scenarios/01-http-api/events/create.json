@@ -1,0 +1,27 @@
+{
+  "version": "2.0",
+  "routeKey": "POST /resources",
+  "rawPath": "/resources",
+  "rawQueryString": "",
+  "headers": { "content-type": "application/json" },
+  "requestContext": {
+    "accountId": "123456789012",
+    "apiId": "example",
+    "domainName": "example.execute-api.us-east-1.amazonaws.com",
+    "domainPrefix": "example",
+    "http": {
+      "method": "POST",
+      "path": "/resources",
+      "protocol": "HTTP/1.1",
+      "sourceIp": "127.0.0.1",
+      "userAgent": "playbook"
+    },
+    "requestId": "example-1",
+    "routeKey": "POST /resources",
+    "stage": "$default",
+    "time": "01/Jan/2026:00:00:00 +0000",
+    "timeEpoch": 1767225600000
+  },
+  "body": "{\"id\":\"note-1\",\"title\":\"Read patterns\"}",
+  "isBase64Encoded": false
+}

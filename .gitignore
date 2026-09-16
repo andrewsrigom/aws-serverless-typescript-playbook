@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.terraform/
+*.tfstate*
+*.tfplan
+.env
+.env.*
+!*.example
+coverage/
+.tools/

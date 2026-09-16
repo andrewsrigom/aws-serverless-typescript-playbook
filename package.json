@@ -1,0 +1,54 @@
+{
+  "name": "aws-serverless-typescript-playbook",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.32.0",
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "scripts": {
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "build": "node scripts/build.mjs",
+    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build",
+    "terraform:check": "bash scripts/terraform-check.sh",
+    "test:integration": "bash scripts/integration.sh",
+    "replay": "tsx scenarios/09-dlq-replay/src/cli.ts"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "3.1134.0",
+    "@aws-sdk/client-eventbridge": "3.1134.0",
+    "@aws-sdk/client-secrets-manager": "3.1134.0",
+    "@aws-sdk/client-sns": "3.1134.0",
+    "@aws-sdk/client-sqs": "3.1134.0",
+    "@aws-sdk/lib-dynamodb": "3.1134.0",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@types/aws-lambda": "8.10.163",
+    "@types/node": "24.13.5",
+    "esbuild": "0.28.2",
+    "eslint": "10.10.0",
+    "prettier": "3.9.7",
+    "tsx": "4.23.13",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.70.0",
+    "vitest": "4.1.11"
+  },
+  "license": "MIT",
+  "author": "Andrews Rigom",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/andrewsrigom/aws-serverless-typescript-playbook.git"
+  },
+  "homepage": "https://github.com/andrewsrigom/aws-serverless-typescript-playbook#readme",
+  "bugs": {
+    "url": "https://github.com/andrewsrigom/aws-serverless-typescript-playbook/issues"
+  }
+}

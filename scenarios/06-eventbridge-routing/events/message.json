@@ -1,0 +1,10 @@
+{
+  "source": "playbook.resources",
+  "detail-type": "resource.created.v1",
+  "detail": {
+    "id": "e1",
+    "schemaVersion": 1,
+    "resourceId": "r1",
+    "revision": 1
+  }
+}
