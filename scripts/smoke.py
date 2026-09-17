@@ -80,6 +80,8 @@ if a.scenario == '01':
     status, result = signed('GET', '/resources/' + identity, b'')
     assert status == 200 and result == payload
 elif a.scenario == '02':
+    if not out('public_webhook_enabled'):
+        p.error('This HMAC-only smoke requires an explicitly enabled public webhook test session')
     if not a.secret_arn:
         p.error('--secret-arn is required for the signed webhook smoke test')
     secret = aws('secretsmanager', 'get-secret-value', '--secret-id', a.secret_arn)['SecretString']

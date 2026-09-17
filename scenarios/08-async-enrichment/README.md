@@ -6,7 +6,7 @@ Queue versioned events, call a simulated provider, and persist only newer enrich
 
 ## Prerequisites and restrictions
 
-Provider is a deliberately public, throttled API simulator with no credentials and no sensitive data. It is not an external integration. Worker batch size 5, timeout 30 seconds, visibility 180 seconds.
+Provider is an IAM-protected, throttled API simulator with synthetic data. The worker signs requests using temporary execution-role credentials. It is not an external integration. Worker batch size 5, timeout 30 seconds, visibility 180 seconds.
 
 Node.js 24, pnpm 10.32.0, Terraform 1.16.3, and zip. Unit tests need no AWS credentials, network, or Docker after dependency installation. Deployment and smoke tests require an explicitly authorized sandbox account and AWS CLI v2.
 
@@ -33,6 +33,10 @@ terraform -chdir=scenarios/08-async-enrichment/terraform validate
 Inspect `terraform/main.tf` and [deployment guidance](../../docs/deployment.md) before spending money. Only after authorizing deployment:
 
 ```bash
+# Replace with the explicitly approved sandbox account ID.
+export TF_VAR_target_account_id=123456789012
+aws sts get-caller-identity
+export TF_VAR_enable_workers=true
 terraform -chdir=scenarios/08-async-enrichment/terraform plan -out=review.tfplan
 terraform -chdir=scenarios/08-async-enrichment/terraform apply review.tfplan
 terraform -chdir=scenarios/08-async-enrichment/terraform output -json > /tmp/08-async-enrichment-outputs.json
@@ -57,3 +61,7 @@ CloudWatch retention is seven days. DynamoDB uses on-demand capacity; queues and
 ## Checks and official references
 
 See [checks and coverage](../../docs/verification.md) for the development commands and test coverage. Reference: [official service documentation](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Expressions.ConditionExpressions.html).
+
+See [security and cost controls](../../docs/security-and-cost.md) for default limits, activation, budget alerts, and emergency shutdown.
+
+`src/iam-fetch.ts` signs provider GET requests with the worker's temporary role credentials. IAM grants only `execute-api:Invoke` for this API's GET `/classify/*` route. The adapter pins the HTTPS origin and path, rejects unexpected URLs, and refuses redirects to prevent forwarding signed credentials to another destination.

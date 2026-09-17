@@ -1,0 +1,140 @@
+{
+  "Comment": "Reserve stock, confirm simulated fulfillment, or compensate atomically. No external payment.",
+  "StartAt": "Prepare",
+  "TimeoutSeconds": 300,
+  "States": {
+    "Prepare": {
+      "Type": "Pass",
+      "Parameters": {
+        "request.$": "$"
+      },
+      "Next": "Reserve"
+    },
+    "Reserve": {
+      "Type": "Task",
+      "Resource": "${worker_arn}",
+      "Parameters": {
+        "action": "reserve",
+        "input.$": "$.request"
+      },
+      "TimeoutSeconds": 20,
+      "ResultPath": null,
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "States.Timeout",
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException",
+            "Lambda.TooManyRequestsException"
+          ],
+          "IntervalSeconds": 1,
+          "BackoffRate": 2,
+          "MaxAttempts": 2,
+          "MaxDelaySeconds": 4,
+          "JitterStrategy": "FULL"
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.failure",
+          "Next": "Compensate"
+        }
+      ],
+      "Next": "Confirm"
+    },
+    "Confirm": {
+      "Type": "Task",
+      "Resource": "${worker_arn}",
+      "Parameters": {
+        "action": "confirm",
+        "input.$": "$.request"
+      },
+      "TimeoutSeconds": 20,
+      "ResultPath": null,
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "States.Timeout",
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException",
+            "Lambda.TooManyRequestsException"
+          ],
+          "IntervalSeconds": 1,
+          "BackoffRate": 2,
+          "MaxAttempts": 2,
+          "MaxDelaySeconds": 4,
+          "JitterStrategy": "FULL"
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.failure",
+          "Next": "Compensate"
+        }
+      ],
+      "Next": "Completed"
+    },
+    "Compensate": {
+      "Type": "Task",
+      "Resource": "${worker_arn}",
+      "Parameters": {
+        "action": "compensate",
+        "input.$": "$.request"
+      },
+      "TimeoutSeconds": 20,
+      "ResultPath": "$.compensation",
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "States.Timeout",
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException",
+            "Lambda.TooManyRequestsException"
+          ],
+          "IntervalSeconds": 1,
+          "BackoffRate": 2,
+          "MaxAttempts": 2,
+          "MaxDelaySeconds": 4,
+          "JitterStrategy": "FULL"
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.failure",
+          "Next": "ManualReview"
+        }
+      ],
+      "Next": "CompensationResult"
+    },
+    "CompensationResult": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.compensation.status",
+          "StringEquals": "COMPLETED",
+          "Next": "Completed"
+        }
+      ],
+      "Default": "Compensated"
+    },
+    "Completed": {
+      "Type": "Succeed"
+    },
+    "Compensated": {
+      "Type": "Fail",
+      "Error": "FulfillmentCompensated",
+      "Cause": "Reservation was rolled back. Inspect the request ID before retrying with a new ID."
+    },
+    "ManualReview": {
+      "Type": "Fail",
+      "Error": "CompensationNeedsReview",
+      "Cause": "Inspect persisted reservation and execution history; do not blindly reserve again."
+    }
+  }
+}

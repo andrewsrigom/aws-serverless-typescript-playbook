@@ -8,6 +8,8 @@ jobs:
   verify:
     runs-on: ubuntu-24.04
     timeout-minutes: 25
+    env:
+      TF_PLUGIN_CACHE_DIR: ${{ runner.temp }}/terraform-plugin-cache
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: pnpm/action-setup@9fd676a19091d4595eefd76e4bd31c97133911f1 # v4.2.0
@@ -21,6 +23,7 @@ jobs:
           terraform_version: 1.16.3
           terraform_wrapper: false
       - run: pnpm check
+      - run: mkdir -p "$TF_PLUGIN_CACHE_DIR"
       - run: pnpm terraform:check
       - run: pnpm test:integration
       - run: python3 -c "from pathlib import Path; compile(Path('scripts/smoke.py').read_text(), 'scripts/smoke.py', 'exec')"

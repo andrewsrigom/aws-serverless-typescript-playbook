@@ -17,13 +17,7 @@ export function verify(
   secret: string,
   now: number,
 ): boolean {
-  if (
-    !/^\d{10}$/.test(timestamp) ||
-    !/^v1=[a-f0-9]{64}$/.test(signature) ||
-    Math.abs(now - Number(timestamp)) > 300 ||
-    bytes.length > 64 * 1024
-  )
-    return false;
+  if (!validEnvelope(bytes, timestamp, signature, now)) return false;
 
   const expected = createHmac("sha256", secret)
     .update(timestamp)
@@ -84,4 +78,18 @@ export async function ingest(
 
     throw error;
   }
+}
+
+export function validEnvelope(
+  bytes: Buffer,
+  timestamp: string,
+  signature: string,
+  now: number,
+): boolean {
+  return (
+    /^\d{10}$/.test(timestamp) &&
+    /^v1=[a-f0-9]{64}$/.test(signature) &&
+    Math.abs(now - Number(timestamp)) <= 300 &&
+    bytes.length <= 64 * 1024
+  );
 }

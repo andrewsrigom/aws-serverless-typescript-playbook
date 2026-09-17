@@ -33,6 +33,9 @@ terraform -chdir=scenarios/07-scheduled-reconciliation/terraform validate
 Inspect `terraform/main.tf` and [deployment guidance](../../docs/deployment.md) before spending money. Only after authorizing deployment:
 
 ```bash
+# Replace with the explicitly approved sandbox account ID.
+export TF_VAR_target_account_id=123456789012
+aws sts get-caller-identity
 terraform -chdir=scenarios/07-scheduled-reconciliation/terraform plan -out=review.tfplan
 terraform -chdir=scenarios/07-scheduled-reconciliation/terraform apply review.tfplan
 terraform -chdir=scenarios/07-scheduled-reconciliation/terraform output -json > /tmp/07-scheduled-reconciliation-outputs.json
@@ -57,3 +60,5 @@ CloudWatch retention is seven days. DynamoDB uses on-demand capacity; queues and
 ## Checks and official references
 
 See [checks and coverage](../../docs/verification.md) for the development commands and test coverage. Reference: [official service documentation](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Scan.html).
+
+See [security and cost controls](../../docs/security-and-cost.md) for default limits, activation, budget alerts, and emergency shutdown.

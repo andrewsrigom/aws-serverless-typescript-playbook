@@ -1,0 +1,6 @@
+{
+  "id": "reservation-002",
+  "sku": "widget",
+  "quantity": 2,
+  "simulateFailure": true
+}

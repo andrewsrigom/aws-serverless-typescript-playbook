@@ -8,3 +8,6 @@ dist/
 !*.example
 coverage/
 .tools/
+
+# Temporary signed upload forms and local operator variables
+*.local.json

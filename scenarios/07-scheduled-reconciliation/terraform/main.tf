@@ -4,7 +4,9 @@ terraform {
     aws = { source = "hashicorp/aws", version = "= 6.64.0" }
   }
 }
+
 variable "region" { default = "us-east-1" }
+
 variable "environment" {
   default = "dev"
   validation {
@@ -12,28 +14,58 @@ variable "environment" {
     error_message = "Use 1-12 lowercase letters, digits or hyphens."
   }
 }
-provider "aws" { region = var.region }
+
+variable "target_account_id" {
+  type        = string
+  description = "Explicitly approved sandbox account ID. The provider refuses other accounts."
+  validation {
+    condition     = can(regex("^[0-9]{12}$", var.target_account_id))
+    error_message = "Provide the approved 12-digit AWS account ID."
+  }
+}
+
+provider "aws" {
+  region              = var.region
+  allowed_account_ids = [var.target_account_id]
+  default_tags {
+    tags = { Project = "aws-serverless-typescript-playbook", Environment = var.environment, Scenario = "07-scheduled-reconciliation", ManagedBy = "Terraform" }
+  }
+}
+
 locals { name = "aws-playbook-reconcile-${var.environment}" }
+
 resource "aws_dynamodb_table" "records" {
   name         = local.name
   billing_mode = "PAY_PER_REQUEST"
-  hash_key     = "id"
+  on_demand_throughput {
+    max_read_request_units  = 10
+    max_write_request_units = 10
+  }
+  hash_key = "id"
   attribute {
     name = "id"
     type = "S"
   }
 }
+
 resource "aws_dynamodb_table" "checkpoints" {
   name         = "${local.name}-checkpoints"
   billing_mode = "PAY_PER_REQUEST"
-  hash_key     = "id"
+  on_demand_throughput {
+    max_read_request_units  = 10
+    max_write_request_units = 10
+  }
+  hash_key = "id"
   attribute {
     name = "id"
     type = "S"
   }
 }
+
 module "worker" {
   source               = "../../../terraform/modules/function"
+  enable_alarms        = var.enable_alarms
+  alarm_action_arns    = var.alarm_action_arns
   name                 = "${local.name}-worker"
   artifact             = "${path.module}/../../../dist/07-scheduled-reconciliation/handler.zip"
   environment          = { TABLE_NAME = aws_dynamodb_table.records.name, CHECKPOINT_TABLE = aws_dynamodb_table.checkpoints.name }
@@ -41,25 +73,32 @@ module "worker" {
   timeout              = 60
   reserved_concurrency = 1
 }
+
 resource "aws_sqs_queue" "schedule_dlq" {
   name                      = "${local.name}-schedule-dlq"
   message_retention_seconds = 1209600
   sqs_managed_sse_enabled   = true
 }
+
 resource "aws_iam_role" "scheduler" {
   name               = "${local.name}-scheduler"
   assume_role_policy = jsonencode({ Version = "2012-10-17", Statement = [{ Effect = "Allow", Principal = { Service = "scheduler.amazonaws.com" }, Action = "sts:AssumeRole", Condition = { StringEquals = { "aws:SourceAccount" = data.aws_caller_identity.current.account_id }, ArnEquals = { "aws:SourceArn" = aws_scheduler_schedule_group.this.arn } } }] })
 }
+
 data "aws_caller_identity" "current" {}
+
 resource "aws_scheduler_schedule_group" "this" { name = local.name }
+
 resource "aws_iam_role_policy" "scheduler" {
   role   = aws_iam_role.scheduler.id
   policy = jsonencode({ Version = "2012-10-17", Statement = [{ Effect = "Allow", Action = "lambda:InvokeFunction", Resource = module.worker.arn }, { Effect = "Allow", Action = "sqs:SendMessage", Resource = aws_sqs_queue.schedule_dlq.arn }] })
 }
+
 resource "aws_scheduler_schedule" "this" {
   name                = local.name
   group_name          = aws_scheduler_schedule_group.this.name
   schedule_expression = "rate(5 minutes)"
+  state               = var.enable_schedule ? "ENABLED" : "DISABLED"
   flexible_time_window { mode = "OFF" }
   target {
     arn      = module.worker.arn
@@ -73,7 +112,25 @@ resource "aws_scheduler_schedule" "this" {
   }
   depends_on = [aws_iam_role_policy.scheduler]
 }
+
 output "function_name" { value = module.worker.name }
+
 output "table_name" { value = aws_dynamodb_table.records.name }
+
 output "checkpoint_table_name" { value = aws_dynamodb_table.checkpoints.name }
+
 output "dlq_url" { value = aws_sqs_queue.schedule_dlq.url }
+
+variable "enable_schedule" {
+  type        = bool
+  default     = false
+  description = "Enable recurring reconciliation only for an intentional test session."
+}
+
+resource "aws_sqs_queue_policy" "schedule_dlq" {
+  queue_url = aws_sqs_queue.schedule_dlq.url
+  policy = jsonencode({ Version = "2012-10-17", Statement = [{
+    Effect    = "Deny", Principal = "*", Action = "sqs:*", Resource = aws_sqs_queue.schedule_dlq.arn,
+    Condition = { Bool = { "aws:SecureTransport" = "false", "aws:PrincipalIsAWSService" = "false" } }
+  }] })
+}

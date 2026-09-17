@@ -33,6 +33,11 @@ terraform -chdir=scenarios/02-webhook-ingestion/terraform validate
 Inspect `terraform/main.tf` and [deployment guidance](../../docs/deployment.md) before spending money. Only after authorizing deployment:
 
 ```bash
+# Replace with the explicitly approved sandbox account ID.
+export TF_VAR_target_account_id=123456789012
+aws sts get-caller-identity
+# Explicitly expose the HMAC webhook only for this test session.
+export TF_VAR_allow_public_webhook=true
 terraform -chdir=scenarios/02-webhook-ingestion/terraform plan -out=review.tfplan
 terraform -chdir=scenarios/02-webhook-ingestion/terraform apply review.tfplan
 terraform -chdir=scenarios/02-webhook-ingestion/terraform output -json > /tmp/02-webhook-ingestion-outputs.json
@@ -57,3 +62,7 @@ CloudWatch retention is seven days. DynamoDB uses on-demand capacity; queues and
 ## Checks and official references
 
 See [checks and coverage](../../docs/verification.md) for the development commands and test coverage. Reference: [official service documentation](https://docs.aws.amazon.com/secretsmanager/latest/userguide/retrieving-secrets-javascript.html).
+
+See [security and cost controls](../../docs/security-and-cost.md) for default limits, activation, budget alerts, and emergency shutdown.
+
+The route requires IAM by default; `allow_public_webhook=true` is an explicit opt-in for external senders. Timestamp, signature syntax, and the 64 KiB size limit are checked before retrieving the secret. Valid-looking requests use a per-execution-environment secret cache lasting 60 seconds; concurrent loads are coalesced and failed loads are not cached. Secret rotation therefore has up to a 60-second cache delay. Use a same-account, same-region Secrets Manager secret protected by the standard AWS-managed key for this example; a customer-managed key requires additional, explicitly scoped KMS permissions.
